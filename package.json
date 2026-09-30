@@ -1,9 +1,0 @@
-{
-  "name": "bd-lottery-miniapp",
-  "version": "1.0.0",
-  "description": "Telegram Mini App - Lottery (BDT, manual payments, admin panel)",
-  "main": "server.js",
-  "engines": { "node": ">=22.13" },
-  "scripts": { "start": "node --no-warnings server.js", "dev": "DEV_MODE=1 node --no-warnings server.js" },
-  "license": "UNLICENSED"
-}
