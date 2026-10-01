@@ -1,1 +1,189 @@
+<!doctype html>
+<html lang="bn"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>এডমিন প্যানেল</title>
+<link rel="stylesheet" href="/fx.css">
+<style>
+:root{--bg:#0f1226;--card:#191d3a;--c2:#22274a;--txt:#f2f4ff;--mut:#98a0cf;--pri:#7c5cff;--ok:#2ecc8f;--bad:#ff5c7a;--gold:#ffc94d}
+*{box-sizing:border-box}body{margin:0;color:var(--txt);font:14px -apple-system,"Noto Sans Bengali","Segoe UI",sans-serif}
+a{color:var(--gold)}#login{max-width:340px;margin:18vh auto;padding:24px;background:var(--card);border-radius:16px}
+.top{position:fixed;left:0;top:0;bottom:0;width:190px;display:flex;flex-direction:column;gap:7px;padding:14px 10px;background:var(--card);z-index:5;overflow:auto}
+.top b{font-size:17px;padding:4px 8px 10px}.top button{background:var(--c2);color:var(--txt);border:0;border-radius:8px;padding:10px 12px;cursor:pointer;font-family:inherit;text-align:left;width:100%}
+.top button.on{background:var(--pri)}.top .sp{flex:1}
+#tabs{display:flex;flex-direction:column;gap:5px}main{margin-left:190px}
+@media(max-width:700px){.top{width:145px}.top b{font-size:14px}.top button{font-size:12px;padding:9px 7px}main{margin-left:145px;padding:10px;max-width:none}}.badge{background:var(--bad);border-radius:10px;padding:0 6px;margin-left:4px;font-size:11px}
+main{padding:14px;max-width:none;margin:0 0 0 190px;min-width:0}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px;margin-bottom:16px}
+.stat{background:var(--card);border-radius:12px;padding:14px}.stat small{color:var(--mut)}.stat b{display:block;font-size:22px;margin-top:4px}
+.box{background:var(--card);border-radius:12px;padding:14px;margin-bottom:14px;overflow-x:auto}
+table{width:100%;border-collapse:collapse;min-width:640px}th,td{text-align:left;padding:8px 10px;border-bottom:1px solid #2a3060;vertical-align:top}th{color:var(--mut);font-weight:600;white-space:nowrap}
+input,select,textarea{background:var(--c2);border:1px solid #333a70;color:var(--txt);border-radius:8px;padding:9px;font:inherit;width:100%}
+label{display:block;color:var(--mut);font-size:12px;margin:8px 0 3px}
+button.b{background:var(--pri);color:#fff;border:0;border-radius:8px;padding:8px 12px;cursor:pointer;font:inherit;margin:2px}
+button.ok{background:var(--ok);color:#052}button.bad{background:var(--bad)}button.g{background:var(--c2)}
+.pill{padding:2px 9px;border-radius:12px;font-size:12px}.pending,.open{background:#5a4a10;color:var(--gold)}.approved,.paid,.drawn{background:#0f4a34;color:var(--ok)}.rejected,.cancelled{background:#5a1a2a;color:var(--bad)}
+.mut{color:var(--mut)}.ok-t{color:var(--ok)}.bad-t{color:var(--bad)}.gold{color:var(--gold)}
+.modal{position:fixed;inset:0;background:#000a;display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:30px 10px;z-index:20}
+.modal[hidden]{display:none}.modal>div{background:var(--bg);border-radius:14px;padding:18px;width:100%;max-width:640px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:10px}@media(max-width:560px){.g2{grid-template-columns:1fr}}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#000d;padding:10px 18px;border-radius:20px;z-index:30}
+.tk{display:inline-block;background:var(--c2);border-radius:6px;padding:2px 8px;margin:2px}.tk.w{background:var(--gold);color:#3a2a00}
 
+.brand3d{font-weight:900;letter-spacing:2px;background:linear-gradient(90deg,#ffc94d,#ff6ad5,#7c5cff,#ffc94d);background-size:300% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:b3shine 4s linear infinite;text-shadow:0 0 0 transparent;filter:drop-shadow(0 2px 0 #5b2a00) drop-shadow(0 4px 6px rgba(0,0,0,.6))}
+@keyframes b3shine{to{background-position:300% 0}}
+</style></head><body>
+<div id="login"><h3 style="margin-top:0">🔐 এডমিন লগইন</h3><input id="pw" type="password" placeholder="পাসওয়ার্ড" onkeydown="if(event.key==='Enter')login()"><br><br><button class="b" style="width:100%" onclick="login()">প্রবেশ</button></div>
+<div id="panel" hidden>
+  <div class="top"><b class="brand3d" data-t="BD LOTTERY">BD LOTTERY</b><span id="tabs"></span><span class="sp"></span><button onclick="logout()">লগআউট</button></div>
+  <main id="v"></main>
+</div>
+<div class="modal" id="modal" hidden><div id="mi"></div></div><div class="toast" id="toast" hidden></div>
+<script src="/fx.js"></script>
+<script>
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const tk=n=>'৳'+Number(n||0).toLocaleString('en-IN');
+const dt=s=>s?new Date(s).toLocaleString('bn-BD',{dateStyle:'medium',timeStyle:'short'}):'—';
+const uname=r=>esc((r.first_name||'')+(r.username?' @'+r.username:''))||r.user_id;
+const M={bkash:'bKash',nagad:'Nagad',rocket:'Rocket',bank_transfer:'Bank Transfer',upay:'উপায়'};
+let TOKEN=sessionStorage.getItem('at')||'',cur='dash',badge={};
+async function api(p,body,method){
+  const r=await fetch(p,{method:method||(body?'POST':'GET'),headers:{'content-type':'application/json',authorization:'Bearer '+TOKEN},body:body?JSON.stringify(body):undefined});
+  const j=await r.json().catch(()=>({}));
+  if(r.status===401&&p!=='/admin/api/login'){logout();throw new Error(j.error)}
+  if(!r.ok)throw new Error(j.error||'ত্রুটি');return j;
+}
+function toast(m){const t=$('#toast');t.textContent=m;t.hidden=false;clearTimeout(toast.x);toast.x=setTimeout(()=>t.hidden=true,3000)}
+const act=async(fn)=>{try{await fn()}catch(e){toast('❌ '+e.message)}};
+function modal(h){$('#mi').innerHTML=h;$('#modal').hidden=false}function closeM(){$('#modal').hidden=true}
+async function login(){await act(async()=>{const r=await api('/admin/api/login',{password:$('#pw').value});TOKEN=r.token;sessionStorage.setItem('at',TOKEN);init()})}
+function logout(){TOKEN='';sessionStorage.removeItem('at');$('#panel').hidden=true;$('#login').hidden=false}
+const TABS=[['dash','📊 ড্যাশবোর্ড'],['dep','⬇️ ডিপোজিট'],['wd','⬆️ উত্তোলন'],['lot','🎟 লটারি'],['users','👥 ইউজার'],['tx','📒 লেনদেন'],['bc','📢 ব্রডকাস্ট'],['rv','⭐ রিভিউ'],['set','⚙️ সেটিংস']];
+function drawTabs(){$('#tabs').innerHTML=TABS.map(([k,n])=>`<button class="${cur===k?'on':''}" onclick="nav('${k}')">${n}${(k==='dep'&&badge.d)?`<span class="badge">${badge.d}</span>`:''}${(k==='wd'&&badge.w)?`<span class="badge">${badge.w}</span>`:''}</button>`).join('')}
+async function nav(k){cur=k;drawTabs();$('#v').innerHTML='লোড হচ্ছে…';await act(()=>V[k]())}
+async function init(){if(!TOKEN)return;try{const s=await api('/admin/api/stats');badge={d:s.pending_deposits,w:s.pending_withdrawals}}catch{return}
+  $('#login').hidden=true;$('#panel').hidden=false;nav(cur)}
+const V={};
+V.dash=async()=>{const s=await api('/admin/api/stats');badge={d:s.pending_deposits,w:s.pending_withdrawals};drawTabs();
+ const profit=s.ticket_sales-s.prizes_paid+s.withdraw_fees;
+ const C=(t,v,c='')=>`<div class="stat"><small>${t}</small><b class="${c}">${v}</b></div>`;
+ $('#v').innerHTML=`<div class="cards">
+ ${C('মোট ইউজার',s.users+(s.banned?` <small>(ব্লক ${s.banned})</small>`:''))}${C('ইউজারদের মোট ব্যালেন্স (দায়)',tk(s.balances),'gold')}
+ ${C('অপেক্ষমাণ ডিপোজিট',s.pending_deposits+' • '+tk(s.pending_deposit_sum),s.pending_deposits?'bad-t':'')}${C('অপেক্ষমাণ উত্তোলন',s.pending_withdrawals+' • '+tk(s.pending_withdraw_sum),s.pending_withdrawals?'bad-t':'')}
+ ${C('মোট ডিপোজিট (অনুমোদিত)',tk(s.total_deposit))}${C('মোট উত্তোলন (পরিশোধিত)',tk(s.total_withdraw))}
+ ${C('টিকিট বিক্রি',tk(s.ticket_sales))}${C('পুরস্কার প্রদান',tk(s.prizes_paid))}${C('উত্তোলন ফি আয়',tk(s.withdraw_fees))}
+ ${C('আনুমানিক মুনাফা (বিক্রি − পুরস্কার + ফি)',tk(profit),profit>=0?'ok-t':'bad-t')}${C('চলমান লটারি',s.open_lotteries)}</div>
+ <div class="box mut">মুনাফা হিসাবে বোনাস/রেফারেল/এডমিন সমন্বয় ধরা হয়নি। "ইউজারদের মোট ব্যালেন্স" আপনার কাছে ইউজারদের পাওনা।</div>`};
+const stSel=(id,opts)=>`<select id="${id}" style="max-width:180px" onchange="nav(cur)">${opts.map(([v,n])=>`<option value="${v}">${n}</option>`).join('')}</select>`;
+V.dep=async()=>{const f=$('#fs')?.value??'pending';const {items}=await api('/admin/api/deposits'+(f?'?status='+f:''));
+ $('#v').innerHTML=`<div class="box"><div style="display:flex;gap:8px;align-items:center"><b>ডিপোজিট রিকোয়েস্ট</b>${stSel('fs',[['pending','অপেক্ষমাণ'],['approved','অনুমোদিত'],['rejected','বাতিল'],['','সব']])}</div><br>
+ <table><tr><th>#</th><th>ইউজার</th><th>পরিমাণ</th><th>মাধ্যম / প্রেরক</th><th>ফোন</th><th>TrxID</th><th>স্ক্রিনশট</th><th>সময়</th><th>স্ট্যাটাস</th><th></th></tr>
+ ${items.map(d=>`<tr><td>${d.id}</td><td><a href="#" onclick="userDetail(${d.user_id});return false">${uname(d)}</a></td><td><b>${tk(d.amount)}</b></td><td>${esc(d.method)}<br><span class="mut">${esc(d.sender_number)}</span></td><td>${esc(d.phone||'—')}</td><td>${esc(d.trx_id)}</td><td>${d.screenshot?`<a href="${esc(d.screenshot)}" target="_blank">🖼 দেখুন</a>`:'—'}</td><td>${dt(d.created_at)}</td>
+ <td><span class="pill ${d.status}">${d.status}</span>${d.note?'<br><small class="mut">'+esc(d.note)+'</small>':''}</td>
+ <td>${d.status==='pending'?`<button class="b ok" onclick="depAct(${d.id},'approve',${d.amount})">✔ অনুমোদন</button><button class="b bad" onclick="depAct(${d.id},'reject')">✖ বাতিল</button>`:''}</td></tr>`).join('')||'<tr><td colspan=10 class="mut">কিছু নেই</td></tr>'}</table></div>`;
+ if(f!==undefined)$('#fs').value=f};
+async function depAct(id,a,amt){await act(async()=>{
+  if(a==='approve'){const v=prompt('অনুমোদনের পরিমাণ (ইউজারের দেওয়া: '+amt+'). ভিন্ন হলে বদলান:',amt);if(v===null)return;await api(`/admin/api/deposits/${id}/approve`,{amount:+v})}
+  else{const n=prompt('বাতিলের কারণ (ইউজারকে জানানো হবে):','');if(n===null)return;await api(`/admin/api/deposits/${id}/reject`,{note:n})}
+  toast('✅ সম্পন্ন');nav('dep')})}
+V.wd=async()=>{const f=$('#fs')?.value??'pending';const {items}=await api('/admin/api/withdrawals'+(f?'?status='+f:''));
+ $('#v').innerHTML=`<div class="box"><div style="display:flex;gap:8px;align-items:center"><b>উত্তোলন রিকোয়েস্ট</b>${stSel('fs',[['pending','অপেক্ষমাণ'],['paid','পরিশোধিত'],['rejected','বাতিল'],['','সব']])}</div><br>
+ <table><tr><th>#</th><th>ইউজার</th><th>কাটা হয়েছে</th><th>ফি</th><th style="color:var(--gold)">পাঠাতে হবে</th><th>মাধ্যম / নাম্বার</th><th>ফোন</th><th>সময়</th><th>স্ট্যাটাস</th><th></th></tr>
+ ${items.map(w=>`<tr><td>${w.id}</td><td><a href="#" onclick="userDetail(${w.user_id});return false">${uname(w)}</a></td><td>${tk(w.amount)}</td><td>${tk(w.fee)}</td><td class="gold"><b>${tk(w.amount-w.fee)}</b></td><td>${esc(w.method)}<br><b>${esc(w.number)}</b></td><td>${esc(w.phone||'—')}</td><td>${dt(w.created_at)}</td>
+ <td><span class="pill ${w.status}">${w.status}</span>${w.trx_id?'<br><small>'+esc(w.trx_id)+'</small>':''}${w.note?'<br><small class="mut">'+esc(w.note)+'</small>':''}</td>
+ <td>${w.status==='pending'?`<button class="b ok" onclick="wdAct(${w.id},'approve')">✔ পাঠিয়েছি</button><button class="b bad" onclick="wdAct(${w.id},'reject')">✖ বাতিল</button>`:''}</td></tr>`).join('')||'<tr><td colspan=10 class="mut">কিছু নেই</td></tr>'}</table>
+ <p class="mut">প্রথমে আপনার bKash/Nagad/Rocket থেকে "পাঠাতে হবে" পরিমাণ টাকা পাঠান, তারপর "পাঠিয়েছি" চাপুন। বাতিল করলে টাকা ইউজারের ব্যালেন্সে ফেরত যাবে।</p></div>`;
+ if(f!==undefined)$('#fs').value=f};
+async function wdAct(id,a){await act(async()=>{
+  if(a==='approve'){const t=prompt('পাঠানোর TrxID (ঐচ্ছিক, ইউজারকে জানানো হবে):','');if(t===null)return;await api(`/admin/api/withdrawals/${id}/approve`,{trx_id:t})}
+  else{const n=prompt('বাতিলের কারণ:','');if(n===null)return;await api(`/admin/api/withdrawals/${id}/reject`,{note:n})}
+  toast('✅ সম্পন্ন');nav('wd')})}
+
+// ---- লটারি ----
+V.lot=async()=>{const {items}=await api('/admin/api/lotteries');
+ $('#v').innerHTML=`<div class="box"><button class="b" onclick="lotForm()">➕ নতুন লটারি</button><br><br><table><tr><th>#</th><th>শিরোনাম</th><th>টিকিট</th><th>বিক্রি</th><th>পুরস্কার</th><th>আয়</th><th>ড্র সময়</th><th>স্ট্যাটাস</th><th></th></tr>
+ ${items.map(l=>{const rev=l.sold*l.ticket_price;return `<tr><td>${l.id}</td><td><b>${esc(l.title)}</b></td><td>${tk(l.ticket_price)}</td><td>${l.sold}/${l.max_tickets}</td><td>${l.prizes.map(tk).join(', ')}<br><small class="mut">মোট ${tk(l.prize_total)}</small></td>
+ <td class="${rev>=l.prize_total?'ok-t':'bad-t'}">${tk(rev)}</td><td>${dt(l.draw_time)}<br><small class="mut">${l.auto_draw?'অটো ড্র':'ম্যানুয়াল'}</small></td><td><span class="pill ${l.status}">${l.status}</span></td>
+ <td><button class="b g" onclick="lotView(${l.id})">দেখুন</button>${l.status==='open'?`<button class="b g" onclick='lotForm(${JSON.stringify(l)})'>এডিট</button><button class="b ok" onclick="drawForm(${l.id})">🎲 ড্র</button><button class="b bad" onclick="lotCancel(${l.id})">বাতিল</button>`:`<button class="b" onclick="reuseLot(${l.id})">♻️ পুনরায় ব্যবহার</button>`}</td></tr>`}).join('')||'<tr><td colspan=10 class="mut">কোনো লটারি নেই</td></tr>'}</table></div>`};
+function localDT(iso){const d=iso?new Date(iso):new Date(Date.now()+864e5);d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,16)}
+function lotForm(l){l=l||{};modal(`<h3>${l.id?'লটারি এডিট #'+l.id:'নতুন লটারি'}</h3>
+ <label>শিরোনাম</label><input id="f_t" value="${esc(l.title||'')}">
+ <label>বর্ণনা</label><textarea id="f_d" rows=2>${esc(l.description||'')}</textarea>
+ <div class="g2"><div><label>টিকিট মূল্য (৳)</label><input id="f_p" type="number" value="${l.ticket_price||20}"></div><div><label>মোট টিকিট</label><input id="f_m" type="number" value="${l.max_tickets||100}"></div>
+ <div><label>ন্যূনতম টিকিট (কম হলে ড্র বাতিল ও রিফান্ড, 0 = নেই)</label><input id="f_n" type="number" value="${l.min_tickets||0}"></div><div><label>জনপ্রতি সর্বোচ্চ টিকিট (0 = সীমাহীন)</label><input id="f_u" type="number" value="${l.max_per_user||0}"></div></div>
+ <label>পুরস্কার (১ম, ২য়, ৩য়... কমা দিয়ে, টাকায়) — যেমন: 1000,500,200</label><input id="f_pr" value="${l.prizes?l.prizes.join(','):'1000,500,200'}">
+ <label>ড্র এর সময়</label><input id="f_dt" type="datetime-local" value="${localDT(l.draw_time)}">
+ <label><input type="checkbox" id="f_a" style="width:auto" ${l.id&&!l.auto_draw?'':'checked'}> সময় হলে অটো ড্র (বন্ধ করলে আপনি নিজে ড্র করবেন)</label><br>
+ <button class="b" onclick="lotSave(${l.id||0})">সংরক্ষণ</button><button class="b g" onclick="closeM()">বন্ধ</button>`)}
+async function lotSave(id){await act(async()=>{const b={title:$('#f_t').value,description:$('#f_d').value,ticket_price:+$('#f_p').value,max_tickets:+$('#f_m').value,min_tickets:+$('#f_n').value,max_per_user:+$('#f_u').value,prizes:$('#f_pr').value,draw_time:new Date($('#f_dt').value).toISOString(),auto_draw:$('#f_a').checked};
+ await api(id?'/admin/api/lotteries/'+id:'/admin/api/lotteries',b,id?'PUT':'POST');closeM();toast('✅ সংরক্ষিত');nav('lot')})}
+async function lotView(id){await act(async()=>{const d=await api('/admin/api/lotteries/'+id);const l=d.lottery;
+ modal(`<h3>${esc(l.title)} <span class="pill ${l.status}">${l.status}</span></h3><p class="mut">বিক্রি ${l.sold}/${l.max_tickets} • আয় ${tk(l.sold*l.ticket_price)} • পুরস্কার ${tk(l.prize_total)}</p>
+ <div style="max-height:50vh;overflow:auto"><table style="min-width:0"><tr><th>টিকিট</th><th>ইউজার</th><th>ফলাফল</th></tr>${d.tickets.map(t=>`<tr><td><b>#${t.number}</b></td><td><a href="#" onclick="closeM();userDetail(${t.user_id});return false">${uname(t)}</a></td><td>${t.rank?`<span class="tk w">${t.rank} নম্বর — ${tk(t.prize)}</span>`:''}</td></tr>`).join('')||'<tr><td colspan=3 class="mut">কোনো টিকিট নেই</td></tr>'}</table></div><br><button class="b g" onclick="closeM()">বন্ধ</button>`)})}
+async function drawForm(id){await act(async()=>{const d=await api('/admin/api/lotteries/'+id);const l=d.lottery;
+ modal(`<h3>🎲 ড্র: ${esc(l.title)}</h3><p class="mut">বিক্রিত টিকিট: ${l.sold}। খালি রাখলে সেই পুরস্কারের বিজয়ী এলোমেলোভাবে (crypto random) বাছাই হবে। আপনি চাইলে নির্দিষ্ট টিকিট নাম্বার দিয়ে বিজয়ী ঠিক করতে পারেন।</p>
+ ${l.prizes.map((p,i)=>`<label>${i+1} নম্বর পুরস্কার — ${tk(p)} (ঐচ্ছিক টিকিট নাম্বার)</label><input class="dn" type="number" placeholder="খালি = র‍্যান্ডম">`).join('')}
+ <p class="${l.sold*l.ticket_price>=l.prize_total?'ok-t':'bad-t'}">আয় ${tk(l.sold*l.ticket_price)} বনাম পুরস্কার ${tk(l.prize_total)}</p>
+ <button class="b ok" onclick="doDraw(${id})">ড্র নিশ্চিত করুন</button><button class="b g" onclick="closeM()">বন্ধ</button>`)})}
+async function doDraw(id){if(!confirm('ড্র করলে ফেরানো যাবে না। নিশ্চিত?'))return;await act(async()=>{
+ const nums=[...document.querySelectorAll('.dn')].map(i=>i.value);const r=await api(`/admin/api/lotteries/${id}/draw`,{numbers:nums});
+ closeM();alert('ড্র সম্পন্ন!\n'+r.winners.map(w=>`${w.rank} নম্বর: টিকিট #${w.number} (ইউজার ${w.user_id}) — ${tk(w.prize)}`).join('\n'));nav('lot')})}
+async function reuseLot(id){await act(async()=>{const title=prompt('নতুন লটারির শিরোনাম (ফাঁকা রাখলে আগেরটি):','');const r=await api(`/admin/api/lotteries/${id}/reuse`,{title:title||undefined,draw_time:new Date(Date.now()+86400000).toISOString()});toast('✅ নতুন লটারি তৈরি হয়েছে #'+r.id);nav('lot')})}
+async function lotCancel(id){const r=prompt('বাতিলের কারণ (সব টিকিটের টাকা ফেরত যাবে):','');if(r===null)return;await act(async()=>{await api(`/admin/api/lotteries/${id}/cancel`,{reason:r});toast('✅ বাতিল ও রিফান্ড সম্পন্ন');nav('lot')})}
+
+// ---- ইউজার ----
+V.users=async()=>{const q=$('#uq')?.value||'';const d=await api('/admin/api/users?q='+encodeURIComponent(q));
+ $('#v').innerHTML=`<div class="box"><div style="display:flex;gap:8px"><input id="uq" placeholder="আইডি / নাম / ইউজারনেম খুঁজুন" value="${esc(q)}" onkeydown="if(event.key==='Enter')nav('users')"><button class="b" onclick="nav('users')">খুঁজুন</button></div><p class="mut">মোট ${d.total} জন (সর্বশেষ ৩০ জন দেখানো হচ্ছে)</p>
+ <table><tr><th>ID</th><th>নাম</th><th>ব্যালেন্স</th><th>ডিপোজিট</th><th>উত্তোলন</th><th>জিতেছে</th><th>যোগদান</th><th></th></tr>
+ ${d.users.map(u=>`<tr><td>${u.id}</td><td>${esc(u.first_name)} ${u.username?'<span class="mut">@'+esc(u.username)+'</span>':''} ${u.banned?'<span class="pill rejected">ব্লক</span>':''}</td><td class="gold"><b>${tk(u.balance)}</b></td><td>${tk(u.total_deposit)}</td><td>${tk(u.total_withdraw)}</td><td>${tk(u.total_won)}</td><td>${dt(u.created_at)}</td><td><button class="b g" onclick="userDetail(${u.id})">খুলুন</button></td></tr>`).join('')}</table></div>`;
+ setTimeout(()=>{const i=$('#uq');if(i&&q){i.focus();i.setSelectionRange(q.length,q.length)}})};
+async function userDetail(id){await act(async()=>{const d=await api('/admin/api/users/'+id);const u=d.user;
+ modal(`<h3>${esc(u.first_name)} ${esc(u.last_name)} ${u.username?'<small class="mut">@'+esc(u.username)+'</small>':''} ${u.banned?'<span class="pill rejected">ব্লক</span>':''}</h3>
+ <p>ID: <b>${u.id}</b> • ফোন: <b>${esc(u.phone||'—')}</b> • ব্যালেন্স: <b class="gold">${tk(u.balance)}</b> • রেফার: ${d.referrals} জন${u.referred_by?' • রেফার করেছে: '+u.referred_by:''}<br><span class="mut">যোগদান ${dt(u.created_at)} • শেষ দেখা ${dt(u.last_seen)}</span></p>
+ <button class="b ok" onclick="adjBal(${u.id},1)">➕ ব্যালেন্স যোগ</button><button class="b bad" onclick="adjBal(${u.id},-1)">➖ ব্যালেন্স কর্তন</button>
+ <button class="b g" onclick="banU(${u.id},${u.banned?0:1})">${u.banned?'✅ আনব্লক':'🚫 ব্লক'}</button><button class="b g" onclick="msgU(${u.id})">💬 মেসেজ</button>
+ <h4>টিকিট (${d.tickets.length})</h4><div>${d.tickets.map(t=>`<span class="tk ${t.rank?'w':''}" title="${esc(t.title)}">${esc(t.title.slice(0,14))} #${t.number}${t.rank?' 🏆'+tk(t.prize):''}</span>`).join('')||'<span class="mut">নেই</span>'}</div>
+ <h4>ডিপোজিট / উত্তোলন</h4><table style="min-width:0">${d.deposits.map(x=>`<tr><td>⬇️ ${tk(x.amount)}</td><td>${M[x.method]} ${esc(x.trx_id)}</td><td><span class="pill ${x.status}">${x.status}</span></td><td>${dt(x.created_at)}</td></tr>`).join('')}${d.withdrawals.map(x=>`<tr><td>⬆️ ${tk(x.amount)}</td><td>${M[x.method]} ${esc(x.number)}</td><td><span class="pill ${x.status}">${x.status}</span></td><td>${dt(x.created_at)}</td></tr>`).join('')}</table>
+ <h4>লেনদেন</h4><div style="max-height:220px;overflow:auto"><table style="min-width:0">${d.transactions.map(t=>`<tr><td>${t.type}</td><td class="${t.amount>0?'ok-t':'bad-t'}">${t.amount>0?'+':''}${tk(t.amount)}</td><td>${tk(t.balance_after)}</td><td class="mut">${esc(t.note)}</td><td>${dt(t.created_at)}</td></tr>`).join('')}</table></div><br><button class="b g" onclick="closeM()">বন্ধ</button>`)})}
+async function adjBal(id,sign){const v=prompt(sign>0?'কত টাকা যোগ করবেন?':'কত টাকা কাটবেন?');if(!v)return;const n=prompt('নোট (ইউজার দেখবে না, লেনদেন লগে থাকবে):','');await act(async()=>{await api(`/admin/api/users/${id}/balance`,{amount:sign*Math.abs(+v),note:n});toast('✅ হয়েছে');userDetail(id)})}
+async function banU(id,b){await act(async()=>{await api(`/admin/api/users/${id}/ban`,{banned:!!b});toast('✅ হয়েছে');userDetail(id)})}
+async function msgU(id){const t=prompt('ইউজারকে বট দিয়ে মেসেজ:');if(!t)return;await act(async()=>{await api(`/admin/api/users/${id}/message`,{text:t});toast('✅ পাঠানো হয়েছে')})}
+
+V.tx=async()=>{const f=$('#ft')?.value||'';const {items}=await api('/admin/api/transactions'+(f?'?type='+f:''));
+ const types=['','deposit','withdraw','withdraw_refund','ticket_buy','prize','refund','admin_adjust','bonus','referral'];
+ $('#v').innerHTML=`<div class="box"><select id="ft" style="max-width:200px" onchange="nav('tx')">${types.map(t=>`<option value="${t}" ${t===f?'selected':''}>${t||'সব ধরন'}</option>`).join('')}</select><br><br>
+ <table><tr><th>#</th><th>ইউজার</th><th>ধরন</th><th>পরিমাণ</th><th>ব্যালেন্স</th><th>নোট</th><th>সময়</th></tr>${items.map(t=>`<tr><td>${t.id}</td><td><a href="#" onclick="userDetail(${t.user_id});return false">${uname(t)}</a></td><td>${t.type}</td><td class="${t.amount>0?'ok-t':'bad-t'}">${t.amount>0?'+':''}${tk(t.amount)}</td><td>${tk(t.balance_after)}</td><td class="mut">${esc(t.note)}</td><td>${dt(t.created_at)}</td></tr>`).join('')}</table></div>`};
+V.bc=async()=>{const st=await api('/admin/api/broadcast-status').catch(()=>({}));const ev=st.last;$('#v').innerHTML=`<div class="box"><h3>📢 Telegram Broadcast</h3>
+<p class="mut">ইউজার ব্রডকাস্ট ও অফিসিয়াল চ্যানেল—দুটোই এখান থেকে পাঠাতে পারবেন। ডিপোজিট, উত্তোলন, টিকিট ক্রয় ও ড্র-বিজয়ীর খবর স্বয়ংক্রিয়ভাবে চ্যানেল ও বটে যায় (সেটিংসে চালু/বন্ধ করা যায়)।</p>
+<div class="stat"><small>স্ট্যাটাস</small><b>বট টোকেন: ${st.token?'✅':'❌ নেই'} • চ্যানেল: ${esc(st.channel)||'❌ সেট নেই'}</b>${ev?`<br><small class="mut">শেষ ইভেন্ট: ${esc(String(ev.title).replace(/<[^>]+>/g,''))} → চ্যানেল: ${esc(ev.channel||'—')}${ev.users?' • ইউজার: '+ev.users.ok+' ✔ / '+ev.users.fail+' ✖':''}</small>`:''}${st.lastError?`<br><small class="bad-t">শেষ ত্রুটি: ${esc(st.lastError)}</small>`:''}</div><br>
+<label>মেসেজ — লাইন ধরে লিখুন, Emoji/HTML ব্যবহার করতে পারবেন</label><textarea id="bt" rows=8 placeholder="📢 আজকের ঘোষণা\n🎟 নতুন লটারি শুরু হয়েছে"></textarea><br>
+<button class="b" onclick="bcast(false)">👥 সব ইউজার (বট)</button> <button class="b ok" onclick="bcast(true)">📢 Telegram Channel</button></div>`};
+async function bcast(channel){const t=$('#bt').value.trim();if(!t||!confirm(channel?'চ্যানেলে পাঠাবেন?':'সব ইউজারকে পাঠাবেন?'))return;await act(async()=>{const r=await api('/admin/api/broadcast',{text:t,channel});toast(channel?'✅ চ্যানেলে পাঠানো হয়েছে':'✅ '+r.queued+' জনকে পাঠানো শুরু হয়েছে')})}
+const SF=[['app_name','অ্যাপের নাম'],['announcement','ঘোষণা (হোমে দেখাবে)'],['deposit_note','ডিপোজিট নির্দেশনা'],['min_deposit','ন্যূনতম ডিপোজিট ৳'],['max_deposit','সর্বোচ্চ ডিপোজিট ৳'],['min_withdraw','ন্যূনতম উত্তোলন ৳'],['max_withdraw','সর্বোচ্চ উত্তোলন ৳'],['withdraw_fee_percent','উত্তোলন ফি %'],['deposit_bonus_percent','ডিপোজিট বোনাস %'],['referral_bonus','রেফারেল বোনাস ৳'],['support_link','সাপোর্ট লিংক'],['support_channel','সাপোর্ট চ্যানেল লিংক (https://t.me/... — প্রোফাইলে দেখাবে)'],['telegram_channel_id','Telegram Channel ID (@channel বা -100...)'],['channel_broadcast_footer','চ্যানেল ব্রডকাস্টের নিরাপত্তা বার্তা'],['event_broadcast_channel','ইভেন্ট ব্রডকাস্ট → চ্যানেলে (1 = চালু, 0 = বন্ধ)'],['event_broadcast_bot','ইভেন্ট ব্রডকাস্ট → বটের সব ইউজারে (1 = চালু, 0 = বন্ধ)'],['broadcast_mask_names','ব্রডকাস্টে নাম আড়াল (1 = আড়াল, 0 = পুরো নাম)'],['maintenance','রক্ষণাবেক্ষণ মোড (1 = চালু, 0 = বন্ধ)']];
+const PMB={bkash:['#e2136e','bKash'],nagad:['#f6921e','Nagad'],rocket:['#8c3494','Rocket'],bank_transfer:['#315b9b','Bank'],upay:['#20a67a','উপায়']};
+const defLogo=k=>'data:image/svg+xml,'+encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" rx="22" fill="${(PMB[k]||['#7c5cff','PM'])[0]}"/><text x="50" y="60" font-size="20" font-family="Arial" font-weight="700" fill="#fff" text-anchor="middle">${(PMB[k]||['','PM'])[1]}</text></svg>`);
+function pickLogo(key){const i=document.createElement('input');i.type='file';i.accept='image/png,image/jpeg,image/webp,image/gif';
+ i.onchange=()=>{const f=i.files[0];if(!f)return;const img=new Image();img.onload=()=>{const c=document.createElement('canvas');c.width=c.height=256;const x=c.getContext('2d');
+ const r=Math.max(256/img.width,256/img.height),w=img.width*r,h=img.height*r;x.drawImage(img,(256-w)/2,(256-h)/2,w,h);
+ act(async()=>{await api('/admin/api/payment-logo',{key,data:c.toDataURL('image/png')});toast('✅ ছবি সেট হয়েছে');V.set()})};img.src=URL.createObjectURL(f)};i.click()}
+async function rmLogo(key){await act(async()=>{await api('/admin/api/payment-logo',{key,remove:true});toast('✅ ডিফল্ট ছবি');V.set()})}
+async function savePM(key, original=''){
+ const row=document.querySelector(`[data-pm="${key}"]`); if(!row)return;
+ await api('/admin/api/payment-methods',{original_key:original||key,key:row.querySelector('.pm-key').value,name:row.querySelector('.pm-name').value,number:row.querySelector('.pm-number').value,enabled:row.querySelector('.pm-on').checked});
+}
+async function addPM(){const key=prompt('Unique key (যেমন: bank_transfer2):','');if(!key)return;const name=prompt('মাধ্যমের নাম:','');if(!name)return;await act(async()=>{await api('/admin/api/payment-methods',{key,name,number:'',enabled:true});toast('✅ মাধ্যম যোগ হয়েছে');V.set()})}
+async function delPM(key){if(!confirm('এই পেমেন্ট মাধ্যম মুছবেন?'))return;await act(async()=>{await api('/admin/api/payment-methods/delete',{key});toast('✅ মুছে ফেলা হয়েছে');V.set()})}
+V.set=async()=>{const {settings:s}=await api('/admin/api/settings');const {items}=await api('/admin/api/payment-methods');
+ $('#v').innerHTML=`<div class="box"><div class="row"><h3 style="margin:0">💳 পেমেন্ট মেথড</h3><button class="b" onclick="addPM()">➕ নতুন মাধ্যম</button></div>
+ <p class="mut">Bank Transfer ও উপায়সহ যত খুশি মাধ্যম যোগ, বন্ধ/চালু, নাম্বার ও লোগো পরিবর্তন করতে পারবেন।</p>
+ <div class="cards">${items.map(m=>`<div class="stat" data-pm="${esc(m.key)}"><img src="${esc(m.logo||defLogo(m.key))}" style="width:64px;height:64px;border-radius:16px;object-fit:cover;float:right">
+ <label>Key</label><input class="pm-key" value="${esc(m.key)}"><label>নাম</label><input class="pm-name" value="${esc(m.name)}">
+ <label>অ্যাকাউন্ট/নাম্বার</label><input class="pm-number" value="${esc(m.number)}" placeholder="Account / Number / Bank info">
+ <label><input class="pm-on" type="checkbox" ${m.enabled?'checked':''} style="width:auto"> চালু থাকবে</label>
+ <button class="b" onclick="act(async()=>{await savePM('${esc(m.key)}');toast('✅ সংরক্ষিত');V.set()})">💾 সংরক্ষণ</button>
+ <button class="b" onclick="pickLogo('${esc(m.key)}')">📷 লোগো</button>${m.logo?`<button class="b bad" onclick="rmLogo('${esc(m.key)}')">মুছুন</button>`:''}
+ <button class="b g" onclick="delPM('${esc(m.key)}')">🗑</button></div>`).join('')}</div></div>
+ <div class="box"><h3>⚙️ সব টেক্সট / সেটিংস</h3><p class="mut">লম্বা লেখা হলে প্রতিটি লাইনে আলাদা করে লিখুন। Emoji সরাসরি যোগ করা যাবে।</p><div class="g2">${SF.map(([k,n])=>`<div><label>${n}</label>${['app_name','announcement','deposit_note','support_link','support_channel','telegram_channel_id','channel_broadcast_footer'].includes(k)?`<textarea data-k="${k}" rows="4">${esc(s[k]||'')}</textarea>`:`<input data-k="${k}" value="${esc(s[k]||'')}">`}</div>`).join('')}</div><br><button class="b" onclick="saveSet()">💾 সব সংরক্ষণ</button></div>`};
+async function saveSet(){await act(async()=>{const b={};document.querySelectorAll('[data-k]').forEach(i=>b[i.dataset.k]=i.value);await api('/admin/api/settings',b);toast('✅ সংরক্ষিত')})}
+V.rv=async()=>{const d=await api('/admin/api/reviews');$('#v').innerHTML=`<div class="box"><h3>⭐ ইউজার রিভিউ</h3><div class="stat"><small>গড় রেটিং</small><b>⭐ ${d.stats.avg.toFixed(1)} / 5 (${d.stats.count}টি)</b></div><br>${d.items.map(r=>`<div class="card"><b>${'★'.repeat(r.rating)}${'☆'.repeat(5-r.rating)}</b><div>${esc(r.text||'')}</div><small class="mut">${esc(r.first_name)}${r.username?' @'+esc(r.username):''} • ${dt(r.created_at)}</small></div>`).join('')||'<span class="mut">এখনো রিভিউ নেই</span>'}</div>`};
+init();setInterval(()=>{if(TOKEN&&!$('#panel').hidden)api('/admin/api/stats').then(s=>{if(badge.d!==s.pending_deposits||badge.w!==s.pending_withdrawals){badge={d:s.pending_deposits,w:s.pending_withdrawals};drawTabs()}}).catch(()=>{})},20000);
+</script></body></html>
